@@ -1,0 +1,18 @@
+{
+  "schemaType": "NERDLET",
+  "id": "attribute-explorer",
+  "displayName": "Attributes Explorer",
+  "description": "",
+  "context": {
+    "entities": [
+      {
+        "domain": "APM",
+        "type": "APPLICATION"
+      },
+      {
+        "domain": "EXT",
+        "type": "SERVICE"
+      }
+    ]
+  }
+}

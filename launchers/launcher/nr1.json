@@ -1,0 +1,7 @@
+{
+  "schemaType": "LAUNCHER",
+  "id": "launcher",
+  "displayName": "Attribute Explorer",
+  "description": "Explore response times by attributes for APM and OTEL services.",
+  "rootNerdletId": "1337e015-8994-41e6-b437-6ccd55f1ace9.attribute-explorer"
+}
