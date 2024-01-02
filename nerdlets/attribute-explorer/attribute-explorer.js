@@ -1,6 +1,6 @@
 import React from 'react';
 import { Layout, LayoutItem, PlatformStateContext, LineChart, HistogramChart, HeadingText, NrqlQuery, Grid, GridItem, BarChart,
-  Dropdown, DropdownItem, Button, BlockText, Tile, navigation } from 'nr1'
+  Dropdown, DropdownItem, Button, BlockText, Tile, Spinner, Stack, StackItem, SectionMessage, ChartGroup, navigation } from 'nr1'
 
 const excludeAttributes = ["appId", "duration", "entityGuid", "entity.guid", "nr.guid", "timestamp", "totalTime", "databaseDuration",
     "externalDuration", "gcCumulative", "parent.transportDuration", "queueDuration", "totalTime", "webDuration", "duration.ms"];
@@ -30,7 +30,7 @@ export default class AttributeExplorer extends React.Component {
     this.currentMetric = 2;
     this.maxHistogram = 3;
     this.state = {
-      headerCharts: [],
+      headerCharts: [<LineChart fullWidth />, <LineChart fullWidth />, <HistogramChart fullWidth />],
       charts: [],
       metric: this.metric[this.currentMetric],
       event: this.event[this.currentEvent],
@@ -51,70 +51,64 @@ export default class AttributeExplorer extends React.Component {
         this.eventTypes[this.currentEvent] + " WHERE entityGuid = '" + this.guid + "'" + this.attribWhere;
     let headerChartArray = [];
     headerChartArray.push(
-      <GridItem columnSpan={5}><Tile type={Tile.TYPE.PLAIN} sizeType={Tile.SIZE_TYPE.SMALL}><HeadingText className="mySpaceBelow myHeader">Performance over time</HeadingText>
-        <PlatformStateContext.Consumer>
-          {
-            (platformState) => {
-              return <NrqlQuery
-                accountIds={[this.accountId]}
-                query={responseQuery}
-                pollInterval={60000}
-                timeRange={platformState.timeRange}
-              >
-              {
-                ({data}) => {
-                  return <LineChart data={data} fullWidth />;
-                }
+      <PlatformStateContext.Consumer>
+        {
+          (platformState) => {
+            return <NrqlQuery
+              accountIds={[this.accountId]}
+              query={responseQuery}
+              pollInterval={60000}
+              timeRange={platformState.timeRange}
+            >
+            {
+              ({data}) => {
+                return <LineChart data={data} fullWidth />;
               }
-              </NrqlQuery>
             }
+            </NrqlQuery>
           }
-          </PlatformStateContext.Consumer>
-      </Tile></GridItem>
+        }
+      </PlatformStateContext.Consumer>
     );
     headerChartArray.push(
-      <GridItem columnSpan={4}><Tile type={Tile.TYPE.PLAIN} sizeType={Tile.SIZE_TYPE.SMALL}><HeadingText className="mySpaceBelow myHeader">Counts over time</HeadingText>
-       <PlatformStateContext.Consumer>
-          {
-            (platformState) => {
-              return <NrqlQuery
-                accountIds={[this.accountId]}
-                query={countQuery}
-                pollInterval={60000}
-                timeRange={platformState.timeRange}
-              >
-              {
-                ({data}) => {
-                  return <LineChart data={data} fullWidth />;
-                }
+      <PlatformStateContext.Consumer>
+        {
+          (platformState) => {
+            return <NrqlQuery
+              accountIds={[this.accountId]}
+              query={countQuery}
+              pollInterval={60000}
+              timeRange={platformState.timeRange}
+            >
+            {
+              ({data}) => {
+                return <LineChart data={data} fullWidth />;
               }
-              </NrqlQuery>
             }
+            </NrqlQuery>
           }
-          </PlatformStateContext.Consumer>
-      </Tile></GridItem>
+        }
+      </PlatformStateContext.Consumer>
     );
     headerChartArray.push(
-      <GridItem columnSpan={3}><Tile type={Tile.TYPE.PLAIN} sizeType={Tile.SIZE_TYPE.SMALL}><HeadingText className="mySpaceBelow myHeader">Response time histogram</HeadingText>
-       <PlatformStateContext.Consumer>
-          {
-            (platformState) => {
-              return <NrqlQuery
-                accountIds={[this.accountId]}
-                query={histogramQuery}
-                pollInterval={60000}
-                timeRange={platformState.timeRange}
-              >
-              {
-                ({data}) => {
-                  return <HistogramChart data={data} fullWidth />;
-                }
+      <PlatformStateContext.Consumer>
+        {
+          (platformState) => {
+            return <NrqlQuery
+              accountIds={[this.accountId]}
+              query={histogramQuery}
+              pollInterval={60000}
+              timeRange={platformState.timeRange}
+            >
+            {
+              ({data}) => {
+                return <HistogramChart data={data} fullWidth />;
               }
-              </NrqlQuery>
             }
+            </NrqlQuery>
           }
-          </PlatformStateContext.Consumer>
-      </Tile></GridItem>
+        }
+      </PlatformStateContext.Consumer>
     );
     return headerChartArray;
   }
@@ -125,7 +119,7 @@ export default class AttributeExplorer extends React.Component {
     const values = ["percentile(" + dur + ", 50)", "percentile(" + dur + ", 75)", "percentile(" + dur + ", 90)",
       "percentile(" + dur + ", 99)", "average(" + dur + ")", "count(*)"];
     const chartQuery = "SELECT " + values[this.currentMetric] + " FROM " + this.eventTypes[this.currentEvent] +
-      " WHERE entityGuid = '" + this.guid + "'" + this.attribWhere + " FACET " + attributeString;
+      " WHERE entityGuid = '" + this.guid + "'" + this.attribWhere + " FACET `" + attributeString + "`";
     if (getAttrib) {
       await this.getAttributes();
       await this.get95Duration();
@@ -143,8 +137,23 @@ export default class AttributeExplorer extends React.Component {
                 pollInterval={60000}
                 timeRange={platformState.timeRange}
               >
-              {
-                ({data}) => {
+              
+                {({ loading, error, data }) => {
+                  if (loading) {
+                    return <Spinner type={Spinner.TYPE.DOT} />;
+                  }
+                
+                  if (error) {
+                    return (
+                      <Stack><StackItem><SectionMessage
+                        type={SectionMessage.TYPE.WARNING}
+                        title="Chart failed to display."
+                        description={error.message}
+                      /></StackItem></Stack>
+                    );
+                  }
+
+                
                   if (data != null && data.length > 0) {
                     //console.log(this.attributes[i]);
                     //console.log(data);
@@ -184,7 +193,7 @@ export default class AttributeExplorer extends React.Component {
 
   async getAttributes() {
     const sampleQuery = "SELECT keyset() FROM " + this.eventTypes[this.currentEvent] + " WHERE entityGuid = '" + this.guid +
-        "' SINCE 1 day ago";
+        "' SINCE 8 days ago";
     let attribArray = [];
     const res = await NrqlQuery.query({
       accountIds: [this.accountId],
@@ -291,7 +300,30 @@ export default class AttributeExplorer extends React.Component {
     return (<div>
       <Layout>
         <LayoutItem>
-          <div className="myBox"><Grid>{this.state.headerCharts}</Grid></div>
+          <div className="myBox">
+            <Grid>
+              <ChartGroup>
+                <GridItem columnSpan={5}>
+                  <Tile type={Tile.TYPE.PLAIN} sizeType={Tile.SIZE_TYPE.SMALL}>
+                    <HeadingText className="mySpaceBelow myHeader">Performance over time</HeadingText>
+                    {this.state.headerCharts[0]}
+                  </Tile>
+                </GridItem>
+                <GridItem columnSpan={4}>
+                  <Tile type={Tile.TYPE.PLAIN} sizeType={Tile.SIZE_TYPE.SMALL}>
+                    <HeadingText className="mySpaceBelow myHeader">Counts over time</HeadingText>
+                    {this.state.headerCharts[1]}
+                  </Tile>
+                </GridItem>
+                <GridItem columnSpan={3}>
+                  <Tile type={Tile.TYPE.PLAIN} sizeType={Tile.SIZE_TYPE.SMALL}>
+                    <HeadingText className="mySpaceBelow myHeader">Response time histogram</HeadingText>
+                    {this.state.headerCharts[2]}
+                  </Tile>
+                </GridItem>
+              </ChartGroup>
+            </Grid>
+          </div>
         </LayoutItem>
       </Layout>
       <Layout>
@@ -307,7 +339,7 @@ export default class AttributeExplorer extends React.Component {
             <DropdownItem onClick={(evt5) => this.setMetric(5)}>{this.metric[5]}</DropdownItem>
           </Dropdown>
           {this.domain === "APM" &&
-            <span className="mySpaceRight">of:
+            <span><span className="mySpaceRight">of:</span>
               <Dropdown iconType={Dropdown.ICON_TYPE.DATAVIZ__DATAVIZ__TABLE_CHART} title={this.state.event} className="mySpaceRight">
                 <DropdownItem onClick={() => this.setEvent(0)}>{this.event[0]}</DropdownItem>
                 <DropdownItem onClick={() => this.setEvent(1)}>{this.event[1]}</DropdownItem>
